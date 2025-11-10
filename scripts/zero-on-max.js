@@ -3,48 +3,61 @@ const MODULE_ID = "zero-on-max";
 Hooks.once("init", () => {
   console.log(`${MODULE_ID} | init`);
 
-  const DieCls = CONFIG.Dice.termTypes["d"];
-  if (!DieCls) {
-    console.error(`${MODULE_ID} | Konnte CONFIG.Dice.termTypes["d"] nicht finden.`);
-    return;
-  }
-
-  /** Wrapper-Funktion */
-  const patchEvaluate = function (wrapped, ...args) {
+  const patchFn = function (wrapped, ...args) {
     const out = wrapped(...args);
 
     try {
-      const faces = this.faces;
-      if (faces === 20 || faces === 100) {
-        for (const r of this.results) {
-          if (r.result === faces) {
-            r.result = 0;
-            r.success = false;
-            r.failure = false;
-            r.active = true;
-          }
+      for (const r of this.dice[0].results) {
+        const max = this.dice[0].faces;
+        if ((max === 20 || max === 100) && r.result === max) {
+          r.result = 0;
+          r.success = false;
+          r.failure = false;
+          r.active = true;
         }
       }
     } catch (e) {
-      console.error(`${MODULE_ID} | Fehler beim Umschreiben`, e);
+      console.error(`${MODULE_ID} | Fehler beim Patchen`, e);
     }
 
     return out;
   };
 
+  // libWrapper bevorzugt
   if (typeof libWrapper !== "undefined") {
-    libWrapper.register(
-      MODULE_ID,
-      "CONFIG.Dice.termTypes.d.prototype.evaluate",
-      patchEvaluate,
-      "WRAPPER"
-    );
-    console.log(`${MODULE_ID} | libWrapper WRAPPER aktiv (evaluate).`);
+    if (CONFIG.Dice.D20Roll) {
+      libWrapper.register(
+        MODULE_ID,
+        "CONFIG.Dice.D20Roll.prototype._evaluateRoll",
+        patchFn,
+        "WRAPPER"
+      );
+      console.log(`${MODULE_ID} | Patched D20Roll`);
+    }
+
+    if (CONFIG.Dice.D100Roll) {
+      libWrapper.register(
+        MODULE_ID,
+        "CONFIG.Dice.D100Roll.prototype._evaluateRoll",
+        patchFn,
+        "WRAPPER"
+      );
+      console.log(`${MODULE_ID} | Patched D100Roll`);
+    }
   } else {
-    const original = DieCls.prototype.evaluate;
-    DieCls.prototype.evaluate = function (...args) {
-      return patchEvaluate(original.bind(this), ...args);
-    };
-    console.warn(`${MODULE_ID} | libWrapper nicht gefunden – Fallback-Patch aktiv.`);
+    // Fallback
+    if (CONFIG.Dice.D20Roll) {
+      const orig = CONFIG.Dice.D20Roll.prototype._evaluateRoll;
+      CONFIG.Dice.D20Roll.prototype._evaluateRoll = function (...args) {
+        return patchFn(orig.bind(this), ...args);
+      };
+    }
+
+    if (CONFIG.Dice.D100Roll) {
+      const orig = CONFIG.Dice.D100Roll.prototype._evaluateRoll;
+      CONFIG.Dice.D100Roll.prototype._evaluateRoll = function (...args) {
+        return patchFn(orig.bind(this), ...args);
+      };
+    }
   }
 });

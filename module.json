@@ -2,7 +2,7 @@
   "id": "zero-on-max",
   "title": "Zero on Max (d20/d100)",
   "description": "Wenn 1d20=20 oder 1d100=100 gewürfelt wird, schreibe den einzelnen Wurfwert auf 0 um.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "authors": [
     { "name": "tiloma", "url": "https://github.com/tiloma" }
   ],

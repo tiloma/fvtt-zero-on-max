@@ -1,0 +1,29 @@
+{
+  "id": "zero-on-max",
+  "title": "Zero on Max (d20/d100)",
+  "description": "Wenn 1d20=20 oder 1d100=100 gewürfelt wird, schreibe den einzelnen Wurfwert auf 0 um.",
+  "version": "1.0.0",
+  "authors": [
+    { "name": "tiloma", "url": "https://github.com/tiloma" }
+  ],
+  "compatibility": {
+    "minimum": "13",
+    "verified": "13"
+  },
+  "esmodules": [
+    "scripts/zero-on-max.js"
+  ],
+  "url": "https://github.com/tiloma/fvtt-zero-on-max",
+  "manifest": "https://raw.githubusercontent.com/tiloma/fvtt-zero-on-max/main/module.json",
+  "download": "https://github.com/tiloma/fvtt-zero-on-max/archive/refs/heads/main.zip",
+  "license": "LICENSE",
+  "relationships": {
+    "requires": [
+      {
+        "id": "lib-wrapper",
+        "type": "module",
+        "manifest": "https://raw.githubusercontent.com/ruipin/fvtt-lib-wrapper/master/module.json"
+      }
+    ]
+  }
+}

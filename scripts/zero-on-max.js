@@ -3,61 +3,48 @@ const MODULE_ID = "zero-on-max";
 Hooks.once("init", () => {
   console.log(`${MODULE_ID} | init`);
 
-  const patchFn = function (wrapped, ...args) {
+  /**
+   * Diese Funktion prüft das Ergebnis eines Würfels und setzt es auf 0,
+   * wenn es beim d20 oder d100 das Maximum erreicht.
+   */
+  function adjustRoll(wrapped, ...args) {
     const out = wrapped(...args);
-
     try {
-      for (const r of this.dice[0].results) {
-        const max = this.dice[0].faces;
-        if ((max === 20 || max === 100) && r.result === max) {
-          r.result = 0;
-          r.success = false;
-          r.failure = false;
-          r.active = true;
-        }
+      const faces = this.faces;
+      if ((faces === 20 || faces === 100) && out && out.result === faces) {
+        out.result = 0;
+        if (typeof out.exploded !== "undefined") out.exploded = false;
+        if (typeof out.success !== "undefined") out.success = false;
+        if (typeof out.failure !== "undefined") out.failure = false;
       }
-    } catch (e) {
-      console.error(`${MODULE_ID} | Fehler beim Patchen`, e);
+    } catch (err) {
+      console.error(`${MODULE_ID} | Fehler beim Setzen auf 0:`, err);
     }
-
     return out;
-  };
+  }
 
-  // libWrapper bevorzugt
-  if (typeof libWrapper !== "undefined") {
-    if (CONFIG.Dice.D20Roll) {
-      libWrapper.register(
-        MODULE_ID,
-        "CONFIG.Dice.D20Roll.prototype._evaluateRoll",
-        patchFn,
-        "WRAPPER"
-      );
-      console.log(`${MODULE_ID} | Patched D20Roll`);
-    }
-
-    if (CONFIG.Dice.D100Roll) {
-      libWrapper.register(
-        MODULE_ID,
-        "CONFIG.Dice.D100Roll.prototype._evaluateRoll",
-        patchFn,
-        "WRAPPER"
-      );
-      console.log(`${MODULE_ID} | Patched D100Roll`);
-    }
-  } else {
-    // Fallback
-    if (CONFIG.Dice.D20Roll) {
-      const orig = CONFIG.Dice.D20Roll.prototype._evaluateRoll;
-      CONFIG.Dice.D20Roll.prototype._evaluateRoll = function (...args) {
-        return patchFn(orig.bind(this), ...args);
-      };
-    }
-
-    if (CONFIG.Dice.D100Roll) {
-      const orig = CONFIG.Dice.D100Roll.prototype._evaluateRoll;
-      CONFIG.Dice.D100Roll.prototype._evaluateRoll = function (...args) {
-        return patchFn(orig.bind(this), ...args);
-      };
+  /**
+   * Patcht alle Dice-Klassen, die das System registriert hat.
+   * Das schließt auch Mothership-spezifische wie MSDie oder PSGDie ein.
+   */
+  const diceTerms = CONFIG?.Dice?.terms ?? {};
+  for (const [key, term] of Object.entries(diceTerms)) {
+    if (term?.prototype?.roll) {
+      if (typeof libWrapper !== "undefined") {
+        libWrapper.register(
+          MODULE_ID,
+          `${term.name}.prototype.roll`,
+          adjustRoll,
+          "WRAPPER"
+        );
+        console.log(`${MODULE_ID} | libWrapper Patch aktiv für ${term.name}`);
+      } else {
+        const original = term.prototype.roll;
+        term.prototype.roll = function (...args) {
+          return adjustRoll.call(this, original.bind(this), ...args);
+        };
+        console.warn(`${MODULE_ID} | Fallback Patch aktiv für ${term.name}`);
+      }
     }
   }
 });
